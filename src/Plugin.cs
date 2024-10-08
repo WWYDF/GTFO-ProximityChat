@@ -33,7 +33,7 @@ namespace ProximityChat
 
         public async void EnterLevel()
         {
-            await Task.Delay(500);
+            await Task.Delay(2500);
             foreach (var player in SNet.LobbyPlayers)
             {
                 int pSlot = player.CharacterIndex;
