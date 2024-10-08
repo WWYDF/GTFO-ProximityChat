@@ -7,6 +7,7 @@ using SNetwork;
 using Steamworks;
 using UnityEngine;
 using Dissonance.Integrations.SteamworksP2P;
+using HarmonyLib;
 
 namespace ProximityChat.DissonanceUtils
 {
@@ -181,16 +182,16 @@ namespace ProximityChat.DissonanceUtils
             MainPlugin.SendLog.LogInfo($"Linked {playerName}'s position!");
             while (isInLevel && GameStateManager.CurrentStateName.ToString() == "InLevel") // Basically while true when in level.
             {
-                try
+                if (player == null || userObject == null || !userObject.activeInHierarchy)
                 {
-                    userObject.transform.position = player.Position;
-                    userObject.transform.rotation = player.Rotation;
-                    await Task.Delay(50); // tune this
-                } catch
-                {
-                    MainPlugin.SendLog.LogError($"Connection to player unexpectedly severed!"); // Gonna leave this (TryCatch) here for now just in case.
+                    MainPlugin.SendLog.LogError($"Connection to player unexpectedly severed!");
                     break;
                 }
+
+                userObject.transform.position = player.Position;
+                userObject.transform.rotation = player.Rotation;
+                await Task.Delay(50); // tune this
+
             }
             MainPlugin.SendLog.LogInfo($"Unlinked {playerName}! ({isInLevel}, {GameStateManager.CurrentStateName.ToString()})");
         }
