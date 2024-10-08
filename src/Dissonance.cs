@@ -14,7 +14,7 @@ namespace ProximityChat.DissonanceUtils
         public GameObject? globalDS;
         public bool isInLevel = false;
 
-        public async void Init()
+        public async void Init() // Calls each time a player enters a level.
         {
             isInLevel = true;
             MainPlugin.SendLog.LogInfo("[DissonanceUtils] Initialized!");
@@ -102,14 +102,12 @@ namespace ProximityChat.DissonanceUtils
 
                         if (audioSourceComponent != null )
                         {   // Apply necessary values to enable positional audio.
-                            MainPlugin.SendLog.LogInfo($"dicks before: {audioSourceComponent.spatialBlend}");
                             OverrideBlend(audioSourceComponent);
                             audioSourceComponent.spatialize = true;
                             audioSourceComponent.spatializePostEffects = true;
                             audioSourceComponent.maxDistance = 50.0f;
                             audioSourceComponent.minDistance = 1.0f;
                             voicePlaybackComponent._IsApplyingAudioSpatialization_k__BackingField = true;
-                            MainPlugin.SendLog.LogInfo($"dicks after: {audioSourceComponent.spatialBlend}");
                             MainPlugin.SendLog.LogInfo("[SetupAudio] Successfully enabled audio spatialization.");
 
                         }
@@ -120,14 +118,23 @@ namespace ProximityChat.DissonanceUtils
 
         public async void LinkPositionUpdater(PlayerAgent player, GameObject userObject)
         {
+            var cState = GameStateManager.CurrentStateName.ToString();
+
             MainPlugin.SendLog.LogInfo($"Linked {player.PlayerName}'s position!");
-            while (isInLevel || player != null || userObject != null) // Basically while true
+            while (isInLevel && cState != "InLevel") // Basically while true when in level.
             {
-                userObject.transform.position = player.Position;
-                userObject.transform.rotation = player.Rotation;
-                await Task.Delay(50);
+                try
+                {
+                    userObject.transform.position = player.Position;
+                    userObject.transform.rotation = player.Rotation;
+                    await Task.Delay(50); // tune this
+                } catch
+                {
+                    MainPlugin.SendLog.LogError($"Connection to game severed! Unlinked all players!");
+                    break;
+                }
             }
-            MainPlugin.SendLog.LogWarning($"Unlinked {player.PlayerName}!");
+            MainPlugin.SendLog.LogInfo($"Unlinked a player!");
         }
 
         public void OnExitLevel()
@@ -142,6 +149,40 @@ namespace ProximityChat.DissonanceUtils
             {
                 audioSourceComponent.spatialBlend = 0.8f;
                 await Task.Delay(1000); // tune this
+            }
+        }
+
+
+
+        // ******* DEBUG, REMOVE IN FINAL RELEASE ******* //
+
+        private string lastState = null;
+        private DateTime lastLogTime = DateTime.MinValue;
+
+        public async void ReportGSM()
+        {
+            int logInterval = 10000; // X seconds interval
+
+            while (true)
+            {
+                var cState = GameStateManager.CurrentStateName.ToString();
+
+                if (cState != lastState)
+                {
+                    // If cState has changed, log immediately and reset timer
+                    MainPlugin.SendLog.LogInfo($"Current Gamestate: {cState}");
+                    lastState = cState;
+                    lastLogTime = DateTime.Now;
+                }
+                else if ((DateTime.Now - lastLogTime).TotalMilliseconds >= logInterval)
+                {
+                    // If 5 seconds have passed since the last log, send the current state
+                    MainPlugin.SendLog.LogInfo($"Current Gamestate: {cState}");
+                    lastLogTime = DateTime.Now;
+                }
+
+                // Delay the next iteration of the loop (this keeps the loop running frequently)
+                await Task.Delay(50);
             }
         }
     }

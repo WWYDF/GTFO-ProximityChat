@@ -5,6 +5,8 @@ using GTFO.API;
 using SNetwork;
 using Player;
 using ProximityChat.PlayerHandler;
+using TenChambers.EventHandlers;
+using HarmonyLib;
 
 namespace ProximityChat
 {
@@ -16,12 +18,14 @@ namespace ProximityChat
         private PlayerHandler.SlotManager? slotManager;
         private DissonanceUtils.DissonanceUtils dissonanceUtils;
 
-        public override void Load()
+        public override void Load() // Runs once when plugin is loaded.
         {
             // Assign BepInEx logger to static field
             SendLog = Log;
             slotManager = SlotManager.Instance;
             dissonanceUtils = new DissonanceUtils.DissonanceUtils();
+
+            // dissonanceUtils.ReportGSM();
 
             LevelAPI.OnEnterLevel += EnterLevel;
             SendLog.LogInfo("Loaded plugin and utilities!");
