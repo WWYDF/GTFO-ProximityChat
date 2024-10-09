@@ -8,23 +8,75 @@ using Steamworks;
 using UnityEngine;
 using Dissonance.Integrations.SteamworksP2P;
 using HarmonyLib;
+using GameEvent;
 
 namespace ProximityChat.DissonanceUtils
 {
     public class DissonanceUtils
     {
+        private static DissonanceUtils _instance;
         private PlayerHandler.SlotManager? slotManager;
         public GameObject? globalDS;
         public bool isInLevel = false;
 
+        public static DissonanceUtils Dissinstance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new DissonanceUtils();
+                }
+                return _instance;
+            }
+        }
+
         public void Init() // Calls each time a player enters a level.
         {
+            RefreshDictionary(); // Initialize the slot dictionary
+
             isInLevel = true;
             MainPlugin.SendLog.LogInfo("[DissonanceUtils] Initialized!");
             UpdateGlobalDS();
             slotManager = SlotManager.Instance;
 
             LevelAPI.OnLevelCleanup += OnExitLevel;
+
+            if (SNet.LocalPlayer.IsMaster)
+                HostSteamP2P();
+            else
+                ClientSteamP2P();
+        }
+
+        public void RefreshDictionary()
+        {
+            foreach (var player in SNet.LobbyPlayers)
+            {
+                int pSlot = player.CharacterIndex;
+                PlayerAgent agent = null;
+                bool tryGetPlayerAgent = Player.PlayerManager.TryGetPlayerAgent(ref pSlot, out agent);
+
+                if (agent == null || !tryGetPlayerAgent)
+                {
+                    MainPlugin.SendLog.LogError($"Player '{player.NickName}' doesn't have a PlayerAgent Object!");
+                    continue;
+                }
+
+                slotManager.UpdatePlayerSlot(pSlot, agent);
+                MainPlugin.SendLog.LogInfo($"Added {agent.PlayerName} in slot #{pSlot} to Dictionary!");
+            }
+        }
+
+        public async void RefreshPlayers() // Runs when a new player joins, or just needs to refresh logic.
+        {
+            if (!isInLevel)
+                return;
+
+            MainPlugin.SendLog.LogInfo("Player Refresh called! (Someone probably joined) Refreshing...");
+            slotManager.ClearAllSlots(); // Wipe slot dictionary
+
+            await Task.Delay(3000);
+            UpdateGlobalDS();
 
             if (SNet.LocalPlayer.IsMaster)
                 HostSteamP2P();
@@ -179,7 +231,7 @@ namespace ProximityChat.DissonanceUtils
         {
             var playerName = player.PlayerName;
 
-            MainPlugin.SendLog.LogInfo($"Linked {playerName}'s position!");
+            MainPlugin.SendLog.LogInfo($"Linking {playerName}'s position!");
             while (isInLevel && GameStateManager.CurrentStateName.ToString() == "InLevel") // Basically while true when in level.
             {
                 if (player == null || userObject == null || !userObject.activeInHierarchy)
@@ -242,6 +294,25 @@ namespace ProximityChat.DissonanceUtils
 
                 // Delay the next iteration of the loop (this keeps the loop running frequently)
                 await Task.Delay(50);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SNet_GlobalManager), "OnPlayerEvent")]
+    class Patch_OnPlayerEvent
+    {
+        static void Postfix(SNetwork.SNet_Player player, SNetwork.SNet_PlayerEvent playerEvent)
+        {
+            // Check if the event is PlayerIsSynced
+            if (playerEvent == SNetwork.SNet_PlayerEvent.PlayerIsSynced)
+            {
+                MainPlugin.SendLog.LogInfo($"Player {player.NickName} has synced with the game.");
+                DissonanceUtils.Dissinstance.RefreshPlayers();
+            }
+
+            if (playerEvent == SNetwork.SNet_PlayerEvent.PlayerLeftSessionHub)
+            {
+                MainPlugin.SendLog.LogInfo($"Player {player.NickName} has disconnected from the game.");
             }
         }
     }

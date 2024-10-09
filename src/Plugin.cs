@@ -5,6 +5,7 @@ using GTFO.API;
 using SNetwork;
 using Player;
 using ProximityChat.PlayerHandler;
+using ProximityChat.DissonanceUtils;
 using TenChambers.EventHandlers;
 using HarmonyLib;
 
@@ -23,33 +24,19 @@ namespace ProximityChat
             // Assign BepInEx logger to static field
             SendLog = Log;
             slotManager = SlotManager.Instance;
-            dissonanceUtils = new DissonanceUtils.DissonanceUtils();
+            dissonanceUtils = DissonanceUtils.DissonanceUtils.Dissinstance;
 
             // dissonanceUtils.ReportGSM();
 
             LevelAPI.OnEnterLevel += EnterLevel;
             SendLog.LogInfo("Loaded plugin and utilities!");
+
+            var harmony = new Harmony("net.devante.gtfo.proximitychat");
+            harmony.PatchAll();
         }
 
-        public async void EnterLevel()
+        public void EnterLevel()
         {
-            await Task.Delay(2500);
-            foreach (var player in SNet.LobbyPlayers)
-            {
-                int pSlot = player.CharacterIndex;
-                PlayerAgent agent = null;
-                bool tryGetPlayerAgent = Player.PlayerManager.TryGetPlayerAgent(ref pSlot, out agent);
-
-                if (agent == null || !tryGetPlayerAgent)
-                {
-                    SendLog.LogError($"Player '{player.NickName}' doesn't have a PlayerAgent Object!");
-                    continue;
-                }
-
-                slotManager.UpdatePlayerSlot(pSlot, agent);
-                SendLog.LogInfo($"Added {agent.PlayerName} in slot #{pSlot} to Dictionary!");
-            }
-
             dissonanceUtils.Init();
         }
     }

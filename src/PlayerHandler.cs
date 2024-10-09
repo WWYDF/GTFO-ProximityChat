@@ -1,7 +1,10 @@
 ﻿using BepInEx.Logging;
 using Dissonance;
+using HarmonyLib;
 using Player;
 using ProximityChat;
+using ProximityChat.DissonanceUtils;
+using SNetwork;
 
 namespace ProximityChat.PlayerHandler
 {
@@ -46,6 +49,12 @@ namespace ProximityChat.PlayerHandler
             }
         }
 
+        public void ClearAllSlots()
+        {
+            playerAgentsBySlot.Clear();
+            MainPlugin.SendLog.LogWarning("[PlayerHandler] PlayerSlots Dictionary has been cleared.");
+        }
+
 
         public PlayerAgent GetPlayerAgentBySlot(int slotNumber)
         {
@@ -55,7 +64,7 @@ namespace ProximityChat.PlayerHandler
             }
             else
             {
-                MainPlugin.SendLog.LogWarning($"Slot {slotNumber} does not exist or is empty.");
+                MainPlugin.SendLog.LogWarning($"[PlayerHandler] Slot {slotNumber} does not exist or is empty.");
                 return null;  // Return null if the slot is empty or doesn't exist
             }
         }
@@ -71,7 +80,7 @@ namespace ProximityChat.PlayerHandler
                 }
             }
 
-            MainPlugin.SendLog.LogWarning($"PlayerAgent {playerAgent.PlayerName} not found in any slot.");
+            MainPlugin.SendLog.LogWarning($"[PlayerHandler] PlayerAgent {playerAgent.PlayerName} not found in any slot.");
             return null;  // Return null if the PlayerAgent is not found in any slot
         }
     }
