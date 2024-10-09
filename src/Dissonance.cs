@@ -86,8 +86,8 @@ namespace ProximityChat.Dissonance
                             OverrideBlend(audioSourceComponent);
                             audioSourceComponent.spatialize = true;
                             audioSourceComponent.spatializePostEffects = true;
-                            audioSourceComponent.maxDistance = 50.0f;
-                            audioSourceComponent.minDistance = 1.0f;
+                            audioSourceComponent.maxDistance = ProximityConfig.changeMaxDistance.Value;
+                            audioSourceComponent.minDistance = ProximityConfig.changeMinDistance.Value;
                             voicePlaybackComponent._IsApplyingAudioSpatialization_k__BackingField = true;
                             MainPlugin.SendLog.LogInfo("[SetupAudio] Successfully enabled audio spatialization.");
 
@@ -103,12 +103,12 @@ namespace ProximityChat.Dissonance
             var playerClone = player;
             var userClone = userObject;
 
-            MainPlugin.SendLog.LogInfo($"Linking {playerName}'s position!");
+            MainPlugin.SendLog.LogInfo($"[PlayerLink] Linking {playerName}'s position!");
             while (isInLevel && GameStateManager.CurrentStateName.ToString() == "InLevel") // Basically while true when in level.
             {
                 if (player == null || userObject == null || !userObject.activeInHierarchy)
                 {
-                    MainPlugin.SendLog.LogError($"Connection to player unexpectedly severed!");
+                    MainPlugin.SendLog.LogError($"[PlayerLink] Connection to player unexpectedly severed!");
                     break;
                 }
 
@@ -116,10 +116,10 @@ namespace ProximityChat.Dissonance
                 userClone.transform.forward = playerClone.Forward;
 
                 // MainPlugin.SendLog.LogInfo($"Updated {playerName}'s X position and X rotation to {playerClone.Position.x}, {playerClone.Forward.x}");
-                await Task.Delay(50); // tune this
+                await Task.Delay(ProximityConfig.changePollingFrequency.Value);
 
             }
-            MainPlugin.SendLog.LogInfo($"Unlinked {playerName}! ({isInLevel}, {GameStateManager.CurrentStateName.ToString()})");
+            MainPlugin.SendLog.LogInfo($"[PlayerLink] Unlinked {playerName}! ({isInLevel}, {GameStateManager.CurrentStateName.ToString()})");
         }
 
         public async void OverrideBlend(AudioSource audioSourceComponent)

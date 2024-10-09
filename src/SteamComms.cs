@@ -39,8 +39,7 @@ namespace ProximityChat.SteamComms
         public void HostSteamP2P()
         {
             var DSObj = rootInstance.globalDS;
-            var p2pComms = DSObj.GetComponent<global::Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>();
-            var p2pServer = p2pComms.Server;
+            var p2pServer = DSObj.GetComponent<global::Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>().Server;
 
             var serverClients = p2pServer._clients;
             var clientsByName = serverClients._clientsByName;
