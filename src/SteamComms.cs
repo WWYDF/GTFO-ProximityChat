@@ -1,5 +1,8 @@
-﻿using Dissonance.Integrations.SteamworksP2P;
+﻿using Dissonance;
+using Dissonance.Integrations.SteamworksP2P;
 using Dissonance.Networking;
+using Player;
+using ProximityChat.TalkState;
 using SNetwork;
 using Steamworks;
 
@@ -12,6 +15,7 @@ namespace ProximityChat.SteamComms
         private Dissonance.DissonanceUtils dissonanceInstance;
         private PlayerHandler.SlotManager slotManager;
         private PlayerHandler.PlayerManager playerManager;
+        private SleeperWake sleeperWake;
 
         // Giver Instance Loader
         private static SteamLink _instance;
@@ -34,6 +38,7 @@ namespace ProximityChat.SteamComms
             dissonanceInstance = Dissonance.DissonanceUtils.Instance;
             slotManager = PlayerHandler.SlotManager.Instance;
             playerManager = PlayerHandler.PlayerManager.Instance;
+            sleeperWake = SleeperWake.Instance;
         }
 
         public void HostSteamP2P()
@@ -76,7 +81,12 @@ namespace ProximityChat.SteamComms
                 
             }
             MainPlugin.SendLog.LogInfo("[SteamP2PHost] Player is Host! Using different linking method..");
-            dissonanceInstance.LinkPositionUpdater(slotManager.GetPlayerAgentBySlot(SNet.LocalPlayer.CharacterIndex), DSObj.gameObject);
+
+            PlayerAgent localAgent = slotManager.GetPlayerAgentBySlot(SNet.LocalPlayer.CharacterIndex);
+            dissonanceInstance.LinkPositionUpdater(localAgent, DSObj.gameObject);
+
+            if (sleeperWake.sleepWakeEnabled)
+                sleeperWake.enableSleeperWake(localAgent, null, DSObj.gameObject.GetComponent<DissonanceComms>().Players[0]);
         }
 
         public void ClientSteamP2P() // this is the new one that needs different values to work properly.

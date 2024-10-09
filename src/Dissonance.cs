@@ -6,6 +6,7 @@ using UnityEngine;
 using HarmonyLib;
 using GTFO.API;
 using SNetwork;
+using ProximityChat.TalkState;
 
 namespace ProximityChat.Dissonance
 {
@@ -16,6 +17,7 @@ namespace ProximityChat.Dissonance
         private SlotManager slotManager;
         private SteamLink steamLink;
         private PlayerHandler.PlayerManager playerManager;
+        private SleeperWake sleeperWake;
         public bool isInLevel = false; // Initialize and store isInLevel check.
 
         // Giver Instance Loader.
@@ -39,6 +41,7 @@ namespace ProximityChat.Dissonance
             slotManager = SlotManager.Instance;
             steamLink = SteamLink.Instance;
             playerManager = PlayerHandler.PlayerManager.Instance;
+            sleeperWake = SleeperWake.Instance;
 
             LevelAPI.OnEnterLevel += onEnterLevel;
             LevelAPI.OnLevelCleanup += OnExitLevel;
@@ -92,6 +95,9 @@ namespace ProximityChat.Dissonance
                             MainPlugin.SendLog.LogInfo("[SetupAudio] Successfully enabled audio spatialization.");
 
                         }
+
+                        if (sleeperWake.sleepWakeEnabled)
+                            sleeperWake.enableSleeperWake(cAgent, voicePlaybackComponent);
                     }
                 }
             }

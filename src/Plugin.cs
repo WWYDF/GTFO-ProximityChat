@@ -7,6 +7,9 @@ using ProximityChat.SteamComms;
 using ProximityChat.Dissonance;
 using UnityEngine;
 using BepInEx.Configuration;
+using ProximityChat.TalkState;
+using GTFO.API;
+using GameData;
 
 namespace ProximityChat
 {
@@ -27,6 +30,7 @@ namespace ProximityChat
         private PlayerHandler.SlotManager? slotManagerInstance;
         private SteamComms.SteamLink? steamLink;
         private PlayerHandler.PlayerManager? playerManager;
+        private TalkState.SleeperWake? sleeperWake;
 
         // Giver Instance Loader
         private static MainPlugin _instance;
@@ -61,9 +65,13 @@ namespace ProximityChat
             slotManagerInstance = SlotManager.Instance;
             steamLink = SteamLink.Instance;
             playerManager = PlayerHandler.PlayerManager.Instance;
+            sleeperWake = SleeperWake.Instance;
 
         // Assign BepInEx logger to static field
             SendLog = Log;
+
+        // Subscribe to events
+            LevelAPI.OnBuildStart += sleeperWake.Init;
 
         // Initialize other classes.
             dissonanceInstance.Init();
