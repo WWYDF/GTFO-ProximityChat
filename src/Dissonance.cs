@@ -1,146 +1,68 @@
 ﻿using Dissonance.Audio.Playback;
-using Dissonance.Networking;
-using GTFO.API;
 using Player;
 using ProximityChat.PlayerHandler;
-using SNetwork;
-using Steamworks;
+using ProximityChat.SteamComms;
 using UnityEngine;
-using Dissonance.Integrations.SteamworksP2P;
 using HarmonyLib;
+using GTFO.API;
+using SNetwork;
 
-namespace ProximityChat.DissonanceUtils
+namespace ProximityChat.Dissonance
 {
     public class DissonanceUtils
     {
-        private PlayerHandler.SlotManager? slotManager;
-        public GameObject? globalDS;
-        public bool isInLevel = false;
+        // Setup instance linking.
+        private MainPlugin? rootInstance;
+        private SlotManager slotManager;
+        private SteamLink steamLink;
+        private PlayerHandler.PlayerManager playerManager;
+        public bool isInLevel = false; // Initialize and store isInLevel check.
 
-        public void Init() // Calls each time a player enters a level.
+        // Giver Instance Loader.
+        private static DissonanceUtils? _instance;
+        public static DissonanceUtils Instance
         {
-            isInLevel = true;
-            MainPlugin.SendLog.LogInfo("[DissonanceUtils] Initialized!");
-            UpdateGlobalDS();
+            get
+            {
+                if (_instance == null)
+                    _instance = new DissonanceUtils();
+                return _instance;
+            }
+        }
+
+        // Procced.
+
+        public void Init() // Called once on plugin load.
+        {
+            // Grab instances.
+            rootInstance = MainPlugin.Instance;
             slotManager = SlotManager.Instance;
+            steamLink = SteamLink.Instance;
+            playerManager = PlayerHandler.PlayerManager.Instance;
 
+            LevelAPI.OnEnterLevel += onEnterLevel;
             LevelAPI.OnLevelCleanup += OnExitLevel;
-
-            if (SNet.LocalPlayer.IsMaster)
-                HostSteamP2P();
-            else
-                ClientSteamP2P();
         }
 
-        public void UpdateGlobalDS() // Grabs Main Dissonance GameObject.
+        public void onEnterLevel() // Called when level is started.
         {
-            GameObject globalObj = GameObject.Find("GLOBAL");
-            MainPlugin.SendLog.LogInfo($"[UpdateDS] Found GLOBAL GameObject: {globalObj.name}");
-
-            GameObject DSObj = globalObj.transform.Find("Managers/Chat/DissonanceSetup").gameObject;
-            MainPlugin.SendLog.LogInfo($"[UpdateDS] Found DissonanceSetup GameObject: {DSObj.name}");
-
-            globalDS = DSObj; // Updates globalDS.
+            MainPlugin.SendLog.LogInfo("Entering Level!");
+            isInLevel = true;
+            
+            playerManager.RefreshPlayers();
         }
 
-        public async void HostSteamP2P()
+        public void OnExitLevel() // Called when level is closed.
         {
-            await Task.Delay(2000); // Delay moved here so this function is async and doesn't cause lag to base game.
-
-            var DSObj = globalDS;
-            var p2pServer = DSObj.GetComponent<Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>().Server;
-
-            var serverClients = p2pServer._clients;
-            var clientsByName = serverClients._clientsByName;
-            var clientsByID = serverClients._clientsByPlayerId;
-            // May need to check if these are null with an if statement.
-
-            MainPlugin.SendLog.LogInfo($"[SteamP2PHost] Found {clientsByName.Count} clients by name and {clientsByID.Count} by player ID.");
-
-            foreach (var clientEntry in clientsByName)
-            {
-                string DUID = clientEntry.Key;
-                var clientInfo = clientEntry.Value;
-                CSteamID clientSteamID = clientInfo.Connection;
-
-                foreach (var slotEntry in clientsByID)
-                {
-                    ushort playerSlot = slotEntry.Key;
-                    var playerInfo = slotEntry.Value;
-                    CSteamID slotSteamID = playerInfo.Connection;
-
-                    if (clientSteamID == slotSteamID) // If both SteamIDs match,
-                    { // Could cause an error if someone leaves and a new person joins during the elevator sequence.
-                        MainPlugin.SendLog.LogInfo($"[SteamP2PHost] DUID {DUID} is in player slot #{playerSlot}.");
-                        SetupIncomingAudio(DUID, playerSlot);
-                    }
-                }
-            }
-            MainPlugin.SendLog.LogInfo("Player is Host! Skipping local linking process.");
+            MainPlugin.SendLog.LogInfo("Exiting Level!");
+            isInLevel = false;
         }
 
-        public void ClientSteamP2P() // this is the new one that needs different values to work properly.
-        {
-            var DSObj = globalDS;
-            var p2pClient = DSObj.GetComponent<Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>().Client;
-
-            var baseClient = p2pClient as BaseClient<SteamworksP2PServer, SteamworksP2PClient, CSteamID>;
-            var clientPeers = baseClient._peers;  // Attempt direct access without reflection
-
-            var peersByName = clientPeers._clientsByName;
-            var peersByID = clientPeers._clientsByPlayerId;
-
-            MainPlugin.SendLog.LogInfo($"[SteamP2PClient] Found {peersByName.Count} clients by name and {peersByID.Count} by player ID.");
-
-            foreach (var clientEntry in peersByName)
-            {
-                try
-                {
-                    MainPlugin.SendLog.LogInfo("[SteamP2PClient] Queued client.");
-                    string DUID = clientEntry.Key;
-
-                    CSteamID clientSteamID;
-
-                    MainPlugin.SendLog.LogInfo($"[SteamP2PClient] Processing {DUID}. Local DUID is '{clientPeers._playerName}'"); // Probably exclude this from release.
-
-                    if (DUID == clientPeers._playerName) // If this loop is the local player
-                    {
-                        MainPlugin.SendLog.LogInfo("[SteamP2PClient] Looped DUID matches local DUID! Redirecting...");
-                        LinkPositionUpdater(slotManager.GetPlayerAgentBySlot(SNet.LocalPlayer.CharacterIndex), DSObj.gameObject);
-                        continue;
-
-                    }
-                    else // Inspecting your own Value entry crashes the game for some reason. Thanks 10C.
-                    {
-                        var clientInfo = clientEntry.Value;
-                        clientSteamID = new CSteamID(clientInfo.Connection.Value.m_SteamID);
-                    }
-
-                    foreach (var slotEntry in peersByID)
-                    {
-                        ushort playerSlot = slotEntry.Key;
-                        var playerInfo = slotEntry.Value; // i think its this and this below vvv
-                        CSteamID slotSteamID = new CSteamID(playerInfo.Connection.Value.m_SteamID);
-
-                        if (clientSteamID == slotSteamID) // If both SteamIDs match,
-                        { // Could cause an error if someone leaves and a new person joins during the elevator sequence.
-                            MainPlugin.SendLog.LogInfo($"[SteamP2PClient] DUID {DUID} is in player slot #{playerSlot}.");
-                            SetupIncomingAudio(DUID, playerSlot);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MainPlugin.SendLog.LogError($"[SteamP2PClient] Inaccessible Object! Skipping... (Error: {ex.Message})");
-                    continue;
-                }
-            }
-        }
 
         public void SetupIncomingAudio(string targetDUID, int pSlot)
         {
-            var DSObj = globalDS;
-            var selfDUID = DSObj.GetComponent<Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>().PlayerName;
+            var DSObj = rootInstance.globalDS;
+            var selfDUID = DSObj.GetComponent<global::Dissonance.Integrations.SteamworksP2P.SteamworksP2PCommsNetwork>().PlayerName;
 
             foreach (var child in DSObj.GetComponentsInChildren<Transform>())
             {
@@ -178,8 +100,10 @@ namespace ProximityChat.DissonanceUtils
         public async void LinkPositionUpdater(PlayerAgent player, GameObject userObject)
         {
             var playerName = player.PlayerName;
+            var playerClone = player;
+            var userClone = userObject;
 
-            MainPlugin.SendLog.LogInfo($"Linked {playerName}'s position!");
+            MainPlugin.SendLog.LogInfo($"Linking {playerName}'s position!");
             while (isInLevel && GameStateManager.CurrentStateName.ToString() == "InLevel") // Basically while true when in level.
             {
                 if (player == null || userObject == null || !userObject.activeInHierarchy)
@@ -188,25 +112,21 @@ namespace ProximityChat.DissonanceUtils
                     break;
                 }
 
-                userObject.transform.position = player.Position;
-                userObject.transform.rotation = player.Rotation;
+                userClone.transform.position = playerClone.Position;
+                userClone.transform.forward = playerClone.Forward;
+
+                // MainPlugin.SendLog.LogInfo($"Updated {playerName}'s X position and X rotation to {playerClone.Position.x}, {playerClone.Forward.x}");
                 await Task.Delay(50); // tune this
 
             }
             MainPlugin.SendLog.LogInfo($"Unlinked {playerName}! ({isInLevel}, {GameStateManager.CurrentStateName.ToString()})");
         }
 
-        public void OnExitLevel()
-        {
-            MainPlugin.SendLog.LogInfo("Exiting Level!");
-            isInLevel = false;
-        }
-
         public async void OverrideBlend(AudioSource audioSourceComponent)
         {   // Not the best solution currently, but it works. Might show noticable lag if scaling past 4 players.
             while (isInLevel)
             {
-                audioSourceComponent.spatialBlend = 0.8f;
+                audioSourceComponent.spatialBlend = 1f;
                 await Task.Delay(1000); // tune this
             }
         }
@@ -242,6 +162,25 @@ namespace ProximityChat.DissonanceUtils
 
                 // Delay the next iteration of the loop (this keeps the loop running frequently)
                 await Task.Delay(50);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SNet_GlobalManager), "OnPlayerEvent")]
+    class Patch_OnPlayerEvent
+    {
+        static void Postfix(SNetwork.SNet_Player player, SNetwork.SNet_PlayerEvent playerEvent)
+        {
+            // Check if the event is PlayerIsSynced
+            if (playerEvent == SNetwork.SNet_PlayerEvent.PlayerIsSynced)
+            {
+                MainPlugin.SendLog.LogInfo($"Player {player.NickName} has synced with the game.");
+                PlayerHandler.PlayerManager.Instance.RefreshPlayers();
+            }
+
+            if (playerEvent == SNetwork.SNet_PlayerEvent.PlayerLeftSessionHub)
+            {
+                MainPlugin.SendLog.LogInfo($"Player {player.NickName} has disconnected from the game.");
             }
         }
     }
