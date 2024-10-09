@@ -6,7 +6,7 @@ The goal is to have it be fully client side, with the ability to wake sleepers b
 
 ## Development Cycle
 
-Currently it's in very very early alpha. I just got the core functions operational and it still has a lot of work to do. Once I fix most of the major crashes (like returning to the lobby lol), I will start upload Beta versions on Thunderstore. After 1.0 is released, development builds will only be available on GitHub.
+Currently it's in early alpha. I just got the core functions operational and it still has some work to do. Soon I will start uploading Beta versions on Thunderstore. After 1.0 is released, development builds will **only** be available on GitHub.
 
 Checkpoints and Dev Builds can currently be found on the [releases page](https://github.com/WWYDF/GTFO-ProximityChat/releases).
 
@@ -14,7 +14,7 @@ Checkpoints and Dev Builds can currently be found on the [releases page](https:/
 ## Planned Features
 
 Just a list of what I intend to add before 1.0.
-- WakeSleepers *(Previously TalkState)*
+- SleeperWake *(Previously TalkState)*
 	- Speaking near sleepers can cause them to wake up.
 - Hard Mode
 	- Speaking near sleepers will cause them to instantly wake up.
@@ -26,6 +26,4 @@ Just a list of what I intend to add before 1.0.
 
 ## Known Issues
 
-- [ ] Crash when exiting expedition.
-
-(I haven't done a lot of testing)
+- None
