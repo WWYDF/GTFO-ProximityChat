@@ -15,9 +15,15 @@ namespace ProximityChat
 {
     public class ProximityConfig
     {
+        // Proximity Settings
         public static ConfigEntry<float> changeMaxDistance;
         public static ConfigEntry<float> changeMinDistance;
         public static ConfigEntry<int> changePollingFrequency;
+
+        // AudioEffects Settings
+        public static ConfigEntry<bool> enableLowPass;
+
+        // TalkState Settings
         public static ConfigEntry<bool> enableSleeperWake;
         public static ConfigEntry<bool> enableHardMode;
     }
@@ -31,6 +37,7 @@ namespace ProximityChat
         private SteamComms.SteamLink? steamLink;
         private PlayerHandler.PlayerManager? playerManager;
         private TalkState.SleeperWake? sleeperWake;
+        private AudioEffects.AudioEffects? audioEffects;
 
         // Giver Instance Loader
         private static MainPlugin _instance;
@@ -57,6 +64,8 @@ namespace ProximityChat
             ProximityConfig.changeMinDistance = Config.Bind("Proximity Settings", "Minimum Distance", 2f, "How close should other players have to be in order to be at full volume?");
             ProximityConfig.changePollingFrequency = Config.Bind("Proximity Settings", "Polling Rate", 50, "How fast Player Positions should be updated in milliseconds.");
 
+            ProximityConfig.enableLowPass = Config.Bind("Audio Effects", "Enable Low Pass", true, "When a player is behind a wall, should the audio be muffled?");
+
             ProximityConfig.enableSleeperWake = Config.Bind("SleeperWake", "Enabled", false, "Allows sleepers to wake up from talking near them. [HOST ONLY]");
             ProximityConfig.enableHardMode = Config.Bind("SleeperWake", "Use Hard Mode?", false, "Makes sleepers instantly wake up from talking near them. (Requires base to be enabled)");
 
@@ -66,6 +75,7 @@ namespace ProximityChat
             steamLink = SteamLink.Instance;
             playerManager = PlayerHandler.PlayerManager.Instance;
             sleeperWake = SleeperWake.Instance;
+            audioEffects = AudioEffects.AudioEffects.Instance;
 
         // Assign BepInEx logger to static field
             SendLog = Log;
@@ -77,6 +87,7 @@ namespace ProximityChat
             dissonanceInstance.Init();
             steamLink.Init();
             playerManager.Init();
+            audioEffects.Init();
 
         // Patch Harmony.
             var harmony = new Harmony("net.devante.gtfo.proximitychat");

@@ -18,6 +18,7 @@ namespace ProximityChat.Dissonance
         private SteamLink steamLink;
         private PlayerHandler.PlayerManager playerManager;
         private SleeperWake sleeperWake;
+        private AudioEffects.AudioEffects audioEffects;
         public bool isInLevel = false; // Initialize and store isInLevel check.
 
         // Giver Instance Loader.
@@ -42,6 +43,7 @@ namespace ProximityChat.Dissonance
             steamLink = SteamLink.Instance;
             playerManager = PlayerHandler.PlayerManager.Instance;
             sleeperWake = SleeperWake.Instance;
+            audioEffects = AudioEffects.AudioEffects.Instance;
 
             LevelAPI.OnEnterLevel += onEnterLevel;
             LevelAPI.OnLevelCleanup += OnExitLevel;
@@ -94,6 +96,8 @@ namespace ProximityChat.Dissonance
                             voicePlaybackComponent._IsApplyingAudioSpatialization_k__BackingField = true;
                             MainPlugin.SendLog.LogInfo("[SetupAudio] Successfully enabled audio spatialization.");
 
+                            if (ProximityConfig.enableLowPass.Value)
+                                audioEffects.InitPlayer(audioSourceComponent, cAgent);
                         }
 
                         if (sleeperWake.sleepWakeEnabled)
